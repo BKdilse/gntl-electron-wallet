@@ -1,0 +1,72 @@
+name: GNTL Electron Wallet Build for Linux and Windows
+
+on:
+  push:
+    paths-ignore:
+      - '**/README.md'
+  pull_request:
+    paths-ignore:
+      - '**/README.md'
+
+jobs:
+    build:
+        runs-on: ${{ matrix.os }}
+        strategy:
+            fail-fast: false
+            matrix:
+              os: [windows-2022]
+
+        steps:
+            - name: Check-out Repo
+              uses: actions/checkout@v4
+
+            - name: Install Node
+              uses: actions/setup-node@v4
+              with:
+                node-version: "12.20.2"
+
+            - name: Install Dependencies
+              run: npm install -f
+
+            - name: Download latest GNTL Release
+              run: node ./build/download-binaries.js
+              env:
+                GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Extract Binaries (Tar)
+              if: ${{runner.os == 'Linux'}}
+              run: tar -xf latest.gz
+              shell: bash
+              working-directory: ./downloads
+
+            - name: Extract Binaries (7z)
+              if: runner.os == 'Windows'
+              run: 7z x latest.7z
+              shell: bash
+              working-directory: ./downloads
+
+            - name: Move Daemon and Wallet Binaries
+              run: |
+                find ./downloads -type f -name "gntld*" -exec cp '{}' ./bin \;
+                find ./downloads -type f -name "gntl-wallet-rpc*" -exec cp '{}' ./bin \;
+              shell: bash
+
+            - name: Verify Binaries
+              run: ls ./bin
+              shell: bash
+
+            - name: Publish Binaries
+              run: npm run build
+              env:
+                GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Remove un-needed Artifacts
+              run: rm -r -- ./*/
+              shell: bash
+              working-directory: ./dist/electron-mat/Packaged
+              
+            - name: Upload Artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                name: ${{ runner.OS }}
+                path: dist/electron-mat/Packaged
