@@ -1,4 +1,4 @@
-name: GNTL Electron Wallet Build for Linux and Windows
+name: 2019
 
 on:
   push:
